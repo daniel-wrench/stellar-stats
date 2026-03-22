@@ -1,4 +1,4 @@
-# Repository Template for Reproducible Research
+# `stellar_stats`: Analysing plasma observations from spacecraft while handling data gaps
 
 **Click "Use this template"** at the top of the webpage on GitHub to create a new repository with the same folder structure. You can then add your own files and edit this README for your particular project.
 
@@ -50,10 +50,12 @@ cd YOUR-REPO-NAME
 
 ### Execute code
 *For example: change these based on your specific files, and add detail about what each step involves*
+
+Before running the code, you'll need to download some data. See how to do this in the `notebooks\nasa_time_series_demo.ipynb`.
+
 ```
-python scripts/01_get_data.py
-python scripts/02_clean_data.py
-python scripts/03_analysis.py
+python scripts/01_COMPUTE_STATS.py
+python scripts/02_PLOT_STATS.py
 ```
 
 ## Project Structure
