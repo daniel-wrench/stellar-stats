@@ -1,8 +1,8 @@
 """
-plot_turb_stats.py
+02_PLOT_STATS.py
 
 Produces a diagnostic figure for each interval (and each gap variant) saved
-by compute_turb_stats.py.  One PNG per interval version, saved under flipbooks/.
+by 01_COMPUTE_STATS.py.  One PNG per interval version, saved under flipbooks/.
 
 Layout
 ------
@@ -13,7 +13,7 @@ Usage
 -----
 Edit the USER SETTINGS block below and run directly:
 
-    python plot_turb_stats.py
+    python PLOT_STATS.py
 
 The script loops over every gap variant present for the chosen interval_id,
 so it works regardless of gap_mode (none / retain / simulate).
@@ -370,7 +370,7 @@ def plot_interval(iv, output_path):
 # ---------------------------------------------------------------------------
 
 DATA_PATH_PREFIX = ""
-SPACECRAFT       = "wind"
+SPACECRAFT       = "voyager"
 FILE_INDEX       = 0
 INTERVAL_ID      = 1       # all gap variants for this interval_id will be plotted
 
@@ -413,8 +413,7 @@ for iv in targets:
     print(f"  gap_status={gap}, sim_version={sim}")
 
     out = (
-        input_filepath.parent.parent.parent
-        / "output/figs" / SPACECRAFT
+        Path("output/figs") / SPACECRAFT
         / (input_filepath.stem + f"_int{INTERVAL_ID}_v{sim}_{gap}.png")
     )
     plot_interval(iv, out)

@@ -48,14 +48,16 @@ cd YOUR-REPO-NAME
 3. Install required packages: `pip install -r requirements.txt`
     - If you haven't yet set up this file, you can first install the required packages, then use `pip freeze > requirements.txt` to write all the dependencies (and their versions) to this file. *Note that this can be a bit overkill with the number of dependencies listed: see [here](https://calmcode.io/course/pip-tools/compile) for an improved method.*
 
+### Set up data and variables
+1. Download data using `notebooks\nasa_time_series_demo.ipynb`
+1. Set spacecraft, variable names appropriately under "Entry point" near bottom of `01_COMPUTE_STATS.py`
+
+
 ### Execute code
 *For example: change these based on your specific files, and add detail about what each step involves*
 
-Before running the code, you'll need to download some data. See how to do this in the `notebooks\nasa_time_series_demo.ipynb`.
-
 ```
-python scripts/01_COMPUTE_STATS.py
-python scripts/02_PLOT_STATS.py
+for file_index in $(seq 0 N_FILES); do python 01_COMPUTE_STATS.py $file_index; done # adjust N_FILES accordingly
 ```
 
 ## Project Structure

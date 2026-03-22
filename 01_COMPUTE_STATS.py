@@ -62,10 +62,10 @@ from sunpy.util.exceptions import SunpyUserWarning
 
 warnings.simplefilter("ignore", category=SunpyUserWarning)
 
-import scripts.params as params
-import scripts.sf_funcs as sf_funcs
-import scripts.utils_new as un
-import scripts.ts_dashboard_utils as ts
+import src.params as params
+import src.sf_funcs as sf_funcs
+import src.utils_new as un
+import src.ts_dashboard_utils as ts
 
 # ---------------------------------------------------------------------------
 # Spacecraft / field configuration
@@ -323,6 +323,11 @@ def apply_sf_correction(sf_df, correction_lookup, n_bins=25):
     pd.DataFrame
         sf_df with columns scaling, scaling_lower, scaling_upper appended.
     """
+
+    with open(f"{correction_lookup}", "rb") as f:
+        print("Loading correction lookup...")
+        correction_lookup = pickle.load(f)
+
     xedges = correction_lookup["xedges"] * 10 / 10_000
     yedges = correction_lookup["yedges"]
     zedges = correction_lookup["zedges"]
@@ -686,7 +691,7 @@ def run_pipeline(file_path, config):
     rng = np.random.default_rng(config.get("random_seed", 1))
 
     print(f"\n{'=' * 64}")
-    print(f"  FILE {file_index}: {file_path}")
+    print(f" FILE {file_index}: {file_path}")
     print(f" Processing data in {'dual' if dual_cadence else 'single'}-cadence mode  "
           f"[hr={cadence_hr}, lr={cadence_lr}]")
     print(f"{'=' * 64}")
@@ -818,32 +823,32 @@ if __name__ == "__main__":
     config = {
 
         # --- Spacecraft and field -------------------------------------------
-        "spacecraft": "wind",
+        "spacecraft": "voyager",
         "field":      "B",      # "B" = magnetic field; "V" = velocity (when ready)
 
         # --- Cadences --------------------------------------------------------
         # Dual-cadence separates correlation scale estimation (needs long time
         # baseline → low-res) from Taylor scale + SF/PSD (need fine resolution
         # → high-res).  Set cadence_hr = None for single-cadence mode.
-        "cadence_lr": "5s",         # low-res: for ACF correlation scales
-        "cadence_hr": "0.092s",     # high-res: for Taylor scale, SF, PSD
-                                    # set to None to disable dual-cadence
+        "cadence_lr": "48s",         # low-res: for ACF correlation scales
+        "cadence_hr": None,     # high-res: for Taylor scale, SF, PSD
+                                    # set to None (no quote marks) to disable dual-cadence
 
         # --- Interval settings -----------------------------------------------
-        "int_length": "12h",        # Duration of each analysis interval
-        "limit_ints": None,         # Cap number of intervals per file (None = all)
+        "int_length": "7d",        # Duration of each analysis interval
+        "limit_ints": 5,         # Cap number of intervals per file (None = all)
 
         # --- Gap handling ----------------------------------------------------
         # "none"     : interpolate gaps if missing < max_gap_prop, skip otherwise
         # "retain"   : keep original gaps; produce naive / lint / corrected variants
         # "simulate" : artificially remove data; produce true / naive / lint / corrected
-        "gap_mode":       "none",
-        "max_gap_prop":   0.1,      # used only for gap_mode="none"
+        "gap_mode":       "retain",
+        "max_gap_prop":   0.9,      # used only for gap_mode="none"
         "times_to_gap":   3,        # used only for gap_mode="simulate"
 
         # --- SF bias correction ----------------------------------------------
         # Set to the loaded correction_lookup dict to enable; None to disable.
-        "correction_lookup": None,
+        "correction_lookup": "correction_lookup_3d_25_bins_lint.pkl",
 
         # --- Spectral fitting ------------------------------------------------
         "f_fit_range_inertial": [0.005, 0.2],    # Hz
