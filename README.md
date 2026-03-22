@@ -1,16 +1,24 @@
 # `stellar_stats`: Analysing plasma observations from spacecraft while handling data gaps
 
-**Click "Use this template"** at the top of the webpage on GitHub to create a new repository with the same folder structure. You can then add your own files and edit this README for your particular project.
 
-- This simple project structure template repository is adapted from https://github.com/UtrechtUniversity/simple-python-template. 
+## TO-DO (Daniel)
+- ~~Simplify computation and plotting codes~~
+- ~~Create tidy repo~~
+- ~~Test out new numbered version on all 3 datasets, using parameters from my papers.
+- Create the first 1 week of the Wind dataset
+- Bring in codes from other repos and run the rest of the gapping pipeline for a small dataset
+- Tidy up late-stage plotting scripts
+- Consider integration of 
+    - velocity (notes for Tulasi)
+    - a new SF computation method, e.g. with gravity waves (notes for Alexa)
+- (Run through Claude/Chat, first asking how best to get feedback - copilot in vs code might be most efficient?)
+
+## How to run this code 
+
 - You can find a guide to getting set up with Git, and slides from a workshop on reproducible research, in the `doc/` folder.
 - See [here](https://github.com/DenisMot/Python-minimal-install) for a useful guide to installing a minimal Python environment and setting up in VS Code and conda.
 - For more detail on Git, see [this great free tutorial](https://swcarpentry.github.io/git-novice/) 
 - If you plan to develop a package, check out the [template repository for a Python package](https://github.com/UtrechtUniversity/re-python-package).
-
-## How to run this code 
-
-*Update for your specific project*
 
 ### You will need
 
@@ -54,7 +62,7 @@ cd YOUR-REPO-NAME
 
 
 ### Execute code
-*For example: change these based on your specific files, and add detail about what each step involves*
+*Note, you can also hit the **Play** button at the top of the script in VS code - they will automatically import the first file available*
 
 ```
 for file_index in $(seq 0 N_FILES); do python 01_COMPUTE_STATS.py $file_index; done # adjust N_FILES accordingly
