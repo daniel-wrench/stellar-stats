@@ -53,6 +53,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from datetime import datetime, timedelta
 from scipy import signal, stats
 from scipy.interpolate import interp1d
 import statsmodels.tsa.stattools as tsa
@@ -129,10 +130,18 @@ def load_cdf(file_path, spacecraft, field="B"):
             for i in range(values.shape[1]):
                 data[f"{var}_{i}"] = values[:, i]
 
-    # --- time index ---
-    epoch = cdf.varget("Epoch")
-    time_index = pd.to_datetime(cdflib.cdfepoch.to_datetime(epoch))
 
+    time_var_name = cdf.cdf_info().zVariables[0]
+    epoch = cdf.varget(time_var_name)
+
+    try:
+        time_index = pd.to_datetime(cdflib.cdfepoch.to_datetime(epoch))
+    except TypeError:
+        if np.issubdtype(epoch.dtype, np.str_):
+            time_index = pd.to_datetime(epoch, format="%Y%m%dT%H%M%S")
+        else:
+            raise ValueError(f"Unrecognized time variable format: {epoch.dtype}")
+    
     df = pd.DataFrame(data, index=time_index)
 
     # --- reuse your original logic unchanged ---
