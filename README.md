@@ -4,7 +4,10 @@
 ## TO-DO (Daniel)
 - ~~Simplify computation and plotting codes~~
 - ~~Create tidy repo~~
+- QUICK RE-EVALUATION OF IMMEDIATE PURPOSE OF WHAT I NEED
+    - Sunpy doesn't work for velocity stuff, so will need to revert to cdflib code (see reynolds paper stuff)
 - ~~Test out new numbered version on all 3 datasets, using parameters from my papers.
+
 - Create the first 1 week of the Wind dataset
 - Bring in codes from other repos and run the rest of the gapping pipeline for a small dataset
 - Tidy up late-stage plotting scripts
@@ -12,6 +15,8 @@
     - velocity (notes for Tulasi)
     - a new SF computation method, e.g. with gravity waves (notes for Alexa)
 - (Run through Claude/Chat, first asking how best to get feedback - copilot in vs code might be most efficient?)
+- Set up slurm scripts + instructions
+- Create pyproject.toml file to replace requirements.txt and allow easier use of notebooks?
 
 ## How to run this code 
 
@@ -64,34 +69,50 @@ cd YOUR-REPO-NAME
 ### Execute code
 *Note, you can also hit the **Play** button at the top of the script in VS code - they will automatically import the first file available*
 
+Adjust `N_FILES` and `CONFIG_FILE` appropriately
+
 ```
-for file_index in $(seq 0 N_FILES); do python 01_COMPUTE_STATS.py $file_index; done # adjust N_FILES accordingly
+for file_index in $(seq 0 N_FILES); do python -m scripts.run_compute configs.CONFIG_FILE $file_index; done 
 ```
 
 ## Project Structure
 *Recommended: change based on your specific files. For example, you may also want a `src/`, `models/` or `notebooks/` folder. (If you are inside `notebooks/` you will likely want to put `sys.path.append(os.path.abspath(".."))` at the start of your notebook, so that you can import funcs from `scripts/`*
 
 ```
-.
-├── README.md          <- Overview of the project, how to install and use 
+
+stellar-stats/         # Your project root
+├── pipeline/            # THE LIBRARY (Core logic, importable everywhere)
+│   ├── __init__.py      # Makes this folder a package
+│   ├── compute.py       # High-level orchestration (run_pipeline)
+│   ├── stats.py         # The math (ACF, SF, PSD, turbulence metrics)
+│   ├── io.py            # CDF loading/saving, path management
+│   └── utils.py         # Logging, decorators, helper functions
+│
+├── scripts/             # THE COMMAND CENTER (Production runs)
+│   ├── run_compute.py   # Main CLI entry point
+│   └── run_plot.py      
+│
+├── notebooks/           # THE LABORATORY (Exploration & Prototyping)
+│   └── nasa_time_series_demo.ipynb     # Demo of downloading and plotting CDF data from NASA website
+│
+├── configs/             # THE SETTINGS (Experiment parameters)
+│   ├── wind.py  
+│   └── psp.py   
+│
+├── data/                # THE VAULT (Never tracked by Git)
+│   ├── raw/             # Original CDFs (Read-only)
+│   └── processed/       # Intermediate arrays/results
+│
+├── results/             # THE GALLERY (Outputs)
+│   └── figures/            
+│
+├── .gitignore           # Excludes data/, results/, and __pycache__/
+├── pyproject.toml       # Makes "pip install -e ." possible
 ├── LICENSE            <- License for open-source projects
 │── CITATION.cff       <- Citation file for academic use
-├── .gitignore         <- Files to ignore (e.g., __pycache__, logs, data)
-├── requirements.txt   <- Dependencies (if using pip: use environment.yml if using conda)
 ├── venv               <- Virtual environment (git ignored)
-├── data/              <- Data directory (typically ignored in version control)
-│   ├── raw/           <- Raw input data (DO NOT MODIFY!)
-│   └── processed/     <- Processed datasets
-├── doc/               <- Written reports, papers, and documentation
-│   ├── project_overview.md
-│   ├── final_paper.pdf
-├── outputs/           <- Outputs like figures, results, model
-│   └── figs/          <- Plots and figures
-└── scripts/           <- Your codes
-    ├── utils.py       <- Functions used by multiple scripts
-    ├── 01_get_data.py
-    ├── 02_clean_data.py
-    └── 03_analysis.py
+├── .gitignore         <- Files to ignore (e.g., __pycache__, logs, data)
+└── README.md            # Project overview and setup instructions
 
 ```
 
@@ -104,3 +125,7 @@ for file_index in $(seq 0 N_FILES); do python 01_COMPUTE_STATS.py $file_index; d
 ## License
 
 This project is licensed under the terms of the [MIT License](/LICENSE).
+
+## Notes
+- Sunpy is good for easily downloading a bunch of files from a specific time period without worrying about file download commands etc.
+- Its `TimeSeries()` function also makes it very convenient to read a CDF and convert it to a dataframe - HOWEVER it doesn't work for some files, e.g. Wind 3dp files (proton/electron moments). If you're just working with magnetic field data, then it's fine.

@@ -39,11 +39,11 @@ Pipeline summary
 
 Custom modules required
 -----------------------
-    src.params             : pipeline constants (max_lag_prop, tau_min, tau_max, ...)
-    src.sf_funcs           : compute_sf(...)
-    src.utils_new          : compute_corr_scale_exp_trick, compute_outer_scale_exp_fit,
+    pipeline.params             : pipeline constants (max_lag_prop, tau_min, tau_max, ...)
+    pipeline.sf_funcs           : compute_sf(...)
+    pipeline.utils_new          : compute_corr_scale_exp_trick, compute_outer_scale_exp_fit,
                              compute_outer_scale_integral, compute_taylor_chuychai, SmoothySpec
-    src.ts_dashboard_utils : remove_data (only needed for gap_mode="simulate")
+    pipeline.ts_dashboard_utils : remove_data (only needed for gap_mode="simulate")
 """
 
 import glob
@@ -58,10 +58,10 @@ from scipy.interpolate import interp1d
 import statsmodels.tsa.stattools as tsa
 
 
-import src.params as params
-import src.sf_funcs as sf_funcs
-import src.utils_new as un
-import src.ts_dashboard_utils as ts
+import pipeline.params as params
+import pipeline.sf_funcs as sf_funcs
+import pipeline.utils_new as un
+import pipeline.ts_dashboard_utils as ts
 
 # ---------------------------------------------------------------------------
 # Spacecraft / field configuration
@@ -712,7 +712,6 @@ def run_pipeline(file_path, config):
     rng = np.random.default_rng(config.get("random_seed", 1))
 
     print(f"\n{'=' * 64}")
-    print(f" FILE {file_index}: {file_path}")
     print(f" Processing data in {'dual' if dual_cadence else 'single'}-cadence mode  "
           f"[hr={cadence_hr}, lr={cadence_lr}]")
     print(f"{'=' * 64}")
@@ -828,114 +827,3 @@ def run_pipeline(file_path, config):
 
     return results, intervals_to_scalar_df(results)
 
-
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
-
-if __name__ == "__main__":
-
-    # -----------------------------------------------------------------------
-    # Configuration
-    # Edit this block to change pipeline behaviour.
-    # Nothing above __main__ should need to change for routine runs.
-    # -----------------------------------------------------------------------
-
-    config = {
-
-        # --- Spacecraft and field -------------------------------------------
-        "spacecraft": "voyager",
-        "field":      "B",      # "B" = magnetic field; "V" = velocity (when ready)
-
-        # --- Cadences --------------------------------------------------------
-        # Dual-cadence separates correlation scale estimation (needs long time
-        # baseline → low-res) from Taylor scale + SF/PSD (need fine resolution
-        # → high-res).  Set cadence_hr = None for single-cadence mode.
-        "cadence_lr": "48s",         # low-res: for ACF correlation scales
-        "cadence_hr": None,     # high-res: for Taylor scale, SF, PSD
-                                    # set to None (no quote marks) to disable dual-cadence
-
-        # --- Interval settings -----------------------------------------------
-        "int_length": "7d",        # Duration of each analysis interval
-        "limit_ints": 5,         # Cap number of intervals per file (None = all)
-
-        # --- Gap handling ----------------------------------------------------
-        # "none"     : interpolate gaps if missing < max_gap_prop, skip otherwise
-        # "retain"   : keep original gaps; produce naive / lint / corrected variants
-        # "simulate" : artificially remove data; produce true / naive / lint / corrected
-        "gap_mode":       "retain",
-        "max_gap_prop":   0.9,      # used only for gap_mode="none"
-        "times_to_gap":   3,        # used only for gap_mode="simulate"
-
-        # --- SF bias correction ----------------------------------------------
-        # Set to the loaded correction_lookup dict to enable; None to disable.
-        "correction_lookup": "correction_lookup_3d_25_bins_lint.pkl",
-
-        # --- Spectral fitting ------------------------------------------------
-        "f_fit_range_inertial": [0.005, 0.2],    # Hz
-        "f_fit_range_kinetic":  [0.5,   1.4],    # Hz
-
-        # --- Stat groups to compute ------------------------------------------
-        # Remove any group name to skip it entirely.  Default (omit key) = all.
-        #   "bulk"   : F0, dF, dF/F0, per-component means/stds  (fast, usually keep)
-        #   "acf_lr" : lr ACF -> tce, tcf, tci
-        #   "acf_hr" : hr ACF -> ttu
-        #   "sf"     : structure function  (slowest; requires hr data)
-        #   "psd"    : PSD -> qi, qk, fb   (requires hr data)
-        "compute": {"bulk", "acf_lr", "acf_hr", "sf", "psd"},
-
-        # --- Output control --------------------------------------------------
-        "store_data": True,        # include data_hr / data_lr arrays in pickle
-        "log_lags":   False,        # log-spaced structure function lags
-
-        # --- Reproducibility -------------------------------------------------
-        "random_seed": 1,
-    }
-
-    # -----------------------------------------------------------------------
-    # File selection (array-job pattern)
-    # -----------------------------------------------------------------------
-
-    spacecraft     = config["spacecraft"]
-    instrument     = config["instrument"]
-    raw_file_list  = sorted(glob.iglob(f"data/raw/{spacecraft}/{instrument}/**/*.cdf", recursive=True))
-
-    if not raw_file_list:
-        print(f"No CDF files found for spacecraft '{spacecraft}' and instrument '{instrument}'. Exiting.") 
-        sys.exit(1)
-
-    file_index = int(sys.argv[1]) if len(sys.argv) > 1 else 0
-
-    if file_index >= len(raw_file_list):
-        print(f"File index {file_index} out of range "
-              f"(found {len(raw_file_list)} files). Exiting.")
-        sys.exit(1)
-
-    file_path = raw_file_list[file_index]
-
-    # -----------------------------------------------------------------------
-    # Run
-    # -----------------------------------------------------------------------
-
-    full_results, scalar_df = run_pipeline(file_path, config)
-
-    # -----------------------------------------------------------------------
-    # Save outputs
-    # -----------------------------------------------------------------------
-
-    out_stem = Path(file_path.replace("raw", "processed").replace(".cdf", ""))
-    out_stem.parent.mkdir(parents=True, exist_ok=True)
-
-    gap_tag = f"_{config['gap_mode']}" if config["gap_mode"] != "none" else ""
-
-    scalar_path = out_stem.with_name(out_stem.name + f"{gap_tag}_scalar_stats.csv")
-    scalar_df.to_csv(scalar_path, index=False)
-    print(f"Scalar stats → {scalar_path}")
-
-    full_path = out_stem.with_name(out_stem.name + f"{gap_tag}_full_stats.pkl")
-    with open(full_path, "wb") as f:
-        pickle.dump(full_results, f)
-    print(f"Full stats   → {full_path}")
-
-    print("\nPipeline complete.")
-    print("----" * 16)
