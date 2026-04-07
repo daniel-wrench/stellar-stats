@@ -1,57 +1,63 @@
-
+import sys
+import importlib
 import glob
 import pickle
 from pathlib import Path
 
 from pipeline.plot import plot_interval
 
-DATA_PATH_PREFIX = ""
-SPACECRAFT       = "voyager"
-FILE_INDEX       = 0
-INTERVAL_ID      = 1       # all gap variants for this interval_id will be plotted
+if __name__ == "__main__":
 
-# ---------------------------------------------------------------------------
-# Run
-# ---------------------------------------------------------------------------
+    # --- config selection ---
+    config_name = sys.argv[1] if len(sys.argv) > 1 else "configs.config_wind_mag"
+    config = importlib.import_module(config_name).CONFIG
 
-files = sorted(glob.iglob(
-    f"{DATA_PATH_PREFIX}data/processed/{SPACECRAFT}/**/*_full_stats.pkl",
-    recursive=True,
-))
+    # --- optional file index ---
+    file_index = int(sys.argv[2]) if len(sys.argv) > 2 else 0
 
-if not files:
-    raise FileNotFoundError(
-        f"No *_full_stats.pkl files found under "
-        f"{DATA_PATH_PREFIX}data/processed/{SPACECRAFT}/"
-    )
+    # --- optional interval index ---
+    interval_id = int(sys.argv[3]) if len(sys.argv) > 3 else 0
 
-input_filepath = Path(files[FILE_INDEX])
-print(f"Loading {input_filepath} ...")
+    spacecraft = config["spacecraft"]
+    instrument = config["instrument"]
 
-with open(input_filepath, "rb") as f:
-    all_stats = pickle.load(f)
+    files = sorted(
+        glob.iglob(f"data/processed/{spacecraft}/{instrument}/**/*_full_stats.pkl", recursive=True,)
+        )
 
-print(f"  {len(all_stats)} interval version(s) found.")
+    if not files:
+        raise FileNotFoundError(
+            f"No *_full_stats.pkl files found under "
+            f"data/processed/{spacecraft}/{instrument}/"
+        )
 
-targets = [iv for iv in all_stats if iv.get("interval_id") == INTERVAL_ID]
+    input_filepath = Path(files[file_index])
+    print(f"Loading {input_filepath} ...")
 
-if not targets:
-    available = sorted({iv.get("interval_id") for iv in all_stats})
-    raise ValueError(
-        f"No intervals with interval_id={INTERVAL_ID}. Available: {available}"
-    )
+    with open(input_filepath, "rb") as f:
+        all_stats = pickle.load(f)
 
-print(f"\nPlotting {len(targets)} version(s) for interval_id={INTERVAL_ID}:")
+    print(f"  {len(all_stats)} interval version(s) found.")
 
-for iv in targets:
-    gap = iv.get("gap_status",  "complete")
-    sim = iv.get("sim_version", 0)
-    print(f"  gap_status={gap}, sim_version={sim}")
+    targets = [iv for iv in all_stats if iv.get("interval_id") == interval_id]
 
-    out = (
-        Path("output/figs") / SPACECRAFT
-        / (input_filepath.stem + f"_int{INTERVAL_ID}_v{sim}_{gap}.png")
-    )
-    plot_interval(iv, out)
+    if not targets:
+        available = sorted({iv.get("interval_id") for iv in all_stats})
+        raise ValueError(
+            f"No intervals with interval_id={interval_id}. Available: {available}"
+        )
 
-print("\nDone.")
+    print(f"\nPlotting {len(targets)} version(s) for interval_id={interval_id}:")
+
+    for iv in targets:
+        gap = iv.get("gap_status",  "complete")
+        sim = iv.get("sim_version", 0)
+        print(f"  gap_status={gap}, sim_version={sim}")
+
+        out = (
+            Path("output/figs") / spacecraft
+            / (input_filepath.stem + f"_int{interval_id}_v{sim}_{gap}.png")
+        )
+        plot_interval(iv, out)
+
+    print("\nDone.")

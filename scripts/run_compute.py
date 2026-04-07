@@ -23,7 +23,7 @@ if __name__ == "__main__":
     )
 
     if not raw_file_list:
-        raise RuntimeError(f"No CDF files found for {spacecraft}/{instrument}")
+        raise FileNotFoundError(f"No CDF files found for {spacecraft}/{instrument}")
 
     file_path = raw_file_list[file_index]
 

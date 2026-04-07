@@ -75,6 +75,11 @@ Adjust `N_FILES` and `CONFIG_FILE` appropriately
 for file_index in $(seq 0 N_FILES); do python -m scripts.run_compute configs.CONFIG_FILE $file_index; done 
 ```
 
+# Plot a single interval and its statistics
+```
+python -m scripts.run_plot configs.CONFIG_FILE $file_index $interval_index 
+```
+
 ## Project Structure
 *Recommended: change based on your specific files. For example, you may also want a `src/`, `models/` or `notebooks/` folder. (If you are inside `notebooks/` you will likely want to put `sys.path.append(os.path.abspath(".."))` at the start of your notebook, so that you can import funcs from `scripts/`*
 
