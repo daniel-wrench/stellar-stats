@@ -49,7 +49,6 @@ Custom modules required
 import glob
 import pickle
 import sys
-import warnings
 from pathlib import Path
 
 import numpy as np
@@ -57,10 +56,7 @@ import pandas as pd
 from scipy import signal, stats
 from scipy.interpolate import interp1d
 import statsmodels.tsa.stattools as tsa
-from sunpy.timeseries import TimeSeries
-from sunpy.util.exceptions import SunpyUserWarning
 
-warnings.simplefilter("ignore", category=SunpyUserWarning)
 
 import src.params as params
 import src.sf_funcs as sf_funcs
@@ -79,7 +75,7 @@ FIELD_COLS = {
     },
     "wind": {
         "B": ["BGSE_0", "BGSE_1", "BGSE_2"],
-        "V": ["V_0",    "V_1",    "V_2"],      # placeholder — wire up params when needed
+        "V": ["P_VELS_0",    "P_VELS_1",    "P_VELS_2"],      # placeholder — wire up params when needed
     },
     "voyager": {
         "B": ["BR", "BT", "BN"],
@@ -92,6 +88,9 @@ COMPONENTS = ["x", "y", "z"]   # generic component labels; columns become Fx, Fy
 # Data loading
 # ---------------------------------------------------------------------------
 
+
+import cdflib
+import pandas as pd
 
 def load_cdf(file_path, spacecraft, field="B"):
     """Load a CDF file and return a cleaned, renamed DataFrame.
@@ -114,10 +113,32 @@ def load_cdf(file_path, spacecraft, field="B"):
     raw_cols = FIELD_COLS[spacecraft][field]
     col_map  = {raw: f"F{c}" for raw, c in zip(raw_cols, COMPONENTS)}
 
-    ts_obj = TimeSeries(file_path, concatenate=True)
-    df = ts_obj.to_dataframe().loc[:, raw_cols].rename(columns=col_map)
-    del ts_obj
+    cdf = cdflib.CDF(file_path)
 
+    # --- load required base variables ---
+    base_vars = {col.rsplit("_", 1)[0] for col in raw_cols}
+
+    data = {}
+
+    for var in base_vars:
+        values = cdf.varget(var)
+
+        if values.ndim == 1:
+            data[var] = values
+        else:
+            for i in range(values.shape[1]):
+                data[f"{var}_{i}"] = values[:, i]
+
+    # --- time index ---
+    epoch = cdf.varget("Epoch")
+    time_index = pd.to_datetime(cdflib.cdfepoch.to_datetime(epoch))
+
+    df = pd.DataFrame(data, index=time_index)
+
+    # --- reuse your original logic unchanged ---
+    df = df.loc[:, raw_cols].rename(columns=col_map)
+
+    # --- diagnostics (unchanged) ---
     start, end = df.index[0], df.index[-1]
     print(f"  Loaded {len(df):,} rows  ({(end - start).round('s')})  {start} → {end}")
 
@@ -876,10 +897,11 @@ if __name__ == "__main__":
     # -----------------------------------------------------------------------
 
     spacecraft     = config["spacecraft"]
-    raw_file_list  = sorted(glob.iglob(f"data/raw/{spacecraft}/**/*.cdf", recursive=True))
+    instrument     = config["instrument"]
+    raw_file_list  = sorted(glob.iglob(f"data/raw/{spacecraft}/{instrument}/**/*.cdf", recursive=True))
 
     if not raw_file_list:
-        print(f"No CDF files found for spacecraft '{spacecraft}'. Exiting.")
+        print(f"No CDF files found for spacecraft '{spacecraft}' and instrument '{instrument}'. Exiting.") 
         sys.exit(1)
 
     file_index = int(sys.argv[1]) if len(sys.argv) > 1 else 0
