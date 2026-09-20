@@ -596,6 +596,40 @@ def get_derived_stats(curves, config):
     """
     out = {}
 
+    # ---- Spectral slopes and break frequency (from PSD) ------------------------
+    # Compute qk before the Taylor-scale correction, which uses the kinetic slope.
+    qk = np.nan
+    if "psd" in curves:
+        freq       = curves["freq"]
+        psd_smooth = curves["psd_smooth"]
+
+        fi_min, fi_max = config.get("f_fit_range_inertial", (None, None))
+        fk_min, fk_max = config.get("f_fit_range_kinetic",  (None, None))
+
+        qi = qi_int = qi_err = np.nan
+        qk_int = qk_err = np.nan
+        fb = np.nan
+
+        if fi_min and fi_max:
+            qi, qi_int, qi_err = _fit_power_law(
+                freq, psd_smooth, (freq > fi_min) & (freq < fi_max)
+            )
+        if fk_min and fk_max:
+            qk, qk_int, qk_err = _fit_power_law(
+                freq, psd_smooth, (freq > fk_min) & (freq < fk_max)
+            )
+        if not any(np.isnan([qi, qk, qi_int, qk_int])) and qi != qk:
+            try:
+                fb = np.exp((qk_int - qi_int) / (qi - qk))
+            except Exception as e:
+                print(f"    fb failed: {e}", file=sys.stderr)
+
+        out.update(
+            qi=qi, qi_intercept=qi_int, qi_stderr=qi_err,
+            qk=qk, qk_intercept=qk_int, qk_stderr=qk_err,
+            fb=fb,   # Hz; convert to seconds via tb = 1/(2*pi*fb) to compare with tce/ttu
+        )
+
     # ---- Correlation scales (from lr ACF) --------------------------------------
     if "acf_lr" in curves:
         acf_lr       = curves["acf_lr"]
@@ -639,37 +673,20 @@ def get_derived_stats(curves, config):
 
         out.update(ttu=ttu, ttu_std=ttu_std)
 
-    # ---- Spectral slopes and break frequency (from PSD) ------------------------
-    if "psd" in curves:
-        freq       = curves["freq"]
-        psd_smooth = curves["psd_smooth"]
-
-        fi_min, fi_max = config.get("f_fit_range_inertial", (None, None))
-        fk_min, fk_max = config.get("f_fit_range_kinetic",  (None, None))
-
-        qi = qi_int = qi_err = np.nan
-        qk = qk_int = qk_err = np.nan
-        fb = np.nan
-
-        if fi_min and fi_max:
-            qi, qi_int, qi_err = _fit_power_law(
-                freq, psd_smooth, (freq > fi_min) & (freq < fi_max)
-            )
-        if fk_min and fk_max:
-            qk, qk_int, qk_err = _fit_power_law(
-                freq, psd_smooth, (freq > fk_min) & (freq < fk_max)
-            )
-        if not any(np.isnan([qi, qk, qi_int, qk_int])) and qi != qk:
+        # ---- Perform Chuychai correction based on slope in kinetic range
+        ttc = ttc_std = np.nan
+        if np.isfinite(qk):
             try:
-                fb = np.exp((qk_int - qi_int) / (qi - qk))
+                ttc, ttc_std = un.compute_taylor_chuychai(
+                    lag_nz, acf_nz,
+                    tau_min=params.tau_min,
+                    tau_max=params.tau_max,
+                    q=qk,
+                )
             except Exception as e:
-                print(f"    fb failed: {e}", file=sys.stderr)
+                print(f"    ttc failed: {e}", file=sys.stderr)
 
-        out.update(
-            qi=qi, qi_intercept=qi_int, qi_stderr=qi_err,
-            qk=qk, qk_intercept=qk_int, qk_stderr=qk_err,
-            fb=fb,   # Hz; convert to seconds via tb = 1/(2*pi*fb) to compare with tce/ttu
-        )
+        out.update(ttc=ttc, ttc_std=ttc_std)
 
     return out
 
@@ -722,14 +739,14 @@ def run_pipeline(file_path, config):
 
     print(f"\n{'=' * 64}")
     print(f" Processing data in {'dual' if dual_cadence else 'single'}-cadence mode  "
-          f"[hr={cadence_hr}, lr={cadence_lr}]")
+          f"[high-res={cadence_hr}, low-res={cadence_lr}]")
     print(f"{'=' * 64}")
 
     # --- Load ---
     df_raw = load_cdf(file_path, spacecraft, field)
 
     # --- Resample to hr cadence (lr is derived per-interval inside prepare_versions) ---
-    print(f"\nResampling to hr cadence ({cadence_hr})...")
+    print(f"\nResampling to high-res cadence ({cadence_hr})...")
     df_hr = resample_field(df_raw, cadence_hr, label="hr")
     del df_raw
 
@@ -831,7 +848,7 @@ def run_pipeline(file_path, config):
             results.append(result)
 
     print(f"\n{'=' * 64}")
-    print(f"  Done.  {len(results)} interval versions processed.")
+    print(f"  Done.  {len(results)} intervals (including potential multiple versions) processed.")
     print(f"{'=' * 64}\n")
 
     return results, intervals_to_scalar_df(results)

@@ -9,20 +9,20 @@ CONFIG = {
     # Dual-cadence separates correlation scale estimation (needs long time
     # baseline → low-res) from Taylor scale + SF/PSD (need fine resolution
     # → high-res).  Set cadence_hr = None for single-cadence mode.
-    "cadence_lr": "9.2s",         # low-res: for ACF correlation scales
+    "cadence_lr": "5s",         # low-res: for ACF correlation scales
     "cadence_hr": "0.092s",     # high-res: for Taylor scale, SF, PSD
                                 # set to None (no quote marks) to disable dual-cadence
 
     # --- Interval settings -----------------------------------------------
     "int_length": "12h",        # Duration of each analysis interval
-    "limit_ints": 2,         # Cap number of intervals per file (None = all)
+    "limit_ints": None,         # Cap number of intervals per file (None = all)
 
     # --- Gap handling ----------------------------------------------------
     # "none"     : interpolate gaps if missing < max_gap_prop, skip otherwise
     # "retain"   : keep original gaps; produce naive / lint / corrected variants
     # "simulate" : artificially remove data; produce true / naive / lint / corrected
     "gap_mode":       "none",
-    "max_gap_prop":   0.9,      # used only for gap_mode="none"
+    "max_gap_prop":   0.1,      # used only for gap_mode="none"
     "times_to_gap":   3,        # used only for gap_mode="simulate"
 
     # --- SF bias correction ----------------------------------------------
