@@ -75,6 +75,19 @@ Adjust `N_FILES` and `CONFIG_FILE` appropriately
 for file_index in $(seq 0 N_FILES); do python -m scripts.run_compute configs.CONFIG_FILE $file_index; done 
 ```
 
+# Merge scalar statistics
+After all files for a dataset have been processed, merge their scalar-statistics
+CSV files into one file. The config determines the spacecraft and instrument
+directory under `data/processed/`:
+
+```sh
+python -m scripts.merge_scalar_stats configs.config_wind_mag
+```
+
+This writes `data/processed/wind/mfi/merged_scalar_stats.csv` and adds a
+`source_file` column identifying the input CSV for each row. To use a different
+input directory or output path, pass `--input-dir` or `--output`.
+
 # Plot a single interval and its statistics
 ```
 python -m scripts.run_plot configs.CONFIG_FILE $file_index $interval_index 
@@ -95,6 +108,7 @@ stellar-stats/         # Your project root
 │
 ├── scripts/             # THE COMMAND CENTER (Production runs)
 │   ├── run_compute.py   # Main CLI entry point
+│   ├── merge_scalar_stats.py
 │   └── run_plot.py      
 │
 ├── notebooks/           # THE LABORATORY (Exploration & Prototyping)
